@@ -1,5 +1,9 @@
 --------------------------------------------------------------------
 -- Understanding Elements of SELECT Statement
+
+-- The following is the order by which query clauses are logically
+-- processed:
+-- FROM -> WHERE -> GROUP BY -> HAVING -> SELECT -> ORDER BY
 --------------------------------------------------------------------
 SET STATISTICS IO ON;
 
@@ -167,4 +171,4 @@ SELECT orderid, custid, val,
 	ROW_NUMBER() OVER(PARTITION BY custid
 						ORDER BY val) AS rownum
 FROM Sales.OrderValues
-ORDER BY custid, val
+ORDER BY custid, val;
