@@ -100,3 +100,106 @@ FROM Sales.Customers;
 SELECT custid, country, region, city,
 	CONCAT_WS(N',', country, region, city) AS location
 FROM Sales.Customers;
+
+------------------------------------------------------------------------------
+-- SUBSTRING function extracts a substring from a string
+-- Syntax : SUBSTRING(string,start,length)
+------------------------------------------------------------------------------
+SELECT SUBSTRING('abcde', 1, 3);
+
+
+------------------------------------------------------------------------------
+-- LEFT and RIGHT functions
+-- Syntax : LEFT(string, n), RIGHT(string, n)
+------------------------------------------------------------------------------
+SELECT RIGHT('abcde', 3);
+SELECT LEFT('abcde', 2);
+
+-------------------------------------------------------------------------------
+-- LEN and DATALENGTH functions
+-- The LEN function returns the number of characters in the input string.
+-- To get the number of bytes use the DATALENGTH function.
+-------------------------------------------------------------------------------
+SELECT LEN(N'abcde');
+SELECT DATALENGTH(N'abcde');
+
+---------------------------------------------------------------------------------
+-- CHARINDEX function, returns the position of the first occurence of a substring
+-- within a string.
+-- Syntax: CHARINDEX(substring, string[,start_pos])
+---------------------------------------------------------------------------------
+SELECT CHARINDEX('G', 'Itzik Ben-Gan');
+
+-------------------------------------------------------------------------------
+-- PATINDEX function, returns the position of the first occurence of a pattern
+-- within a string.
+-- Syntax: PATINDEX(pattern, string)
+-------------------------------------------------------------------------------
+SELECT PATINDEX('%[0-9]%', 'abcd123efgh');
+
+-------------------------------------------------------------------------------
+-- REPLACE function replaces all occurences of a substring with another
+-- Syntax: REPLACE(string,substring1,substring2)
+-------------------------------------------------------------------------------
+SELECT REPLACE('1-a 2-b 3-c 4-d', '-', ':');
+
+/**
+	You can use the REPLACE function to count the number of occurences of a
+	character within a string.
+**/
+SELECT empid, lastname,
+	LEN(lastname) - LEN(REPLACE(lastname, 'e', '')) AS numoccur
+FROM HR.Employees;
+
+-------------------------------------------------------------------------------
+-- TRANSLATE Function, replaces in the string parameter all occurences of the 
+-- individual characters in the characters parameter with the respective
+-- individual characters in the translations paremeter.
+-- Syntax: TRANSLATE(string,characters,translations)
+-------------------------------------------------------------------------------
+SELECT REPLACE(REPLACE('123.456.789,00', '.', ','), ',', '.')
+
+SELECT REPLACE(REPLACE(REPLACE('123.456.789,00', '.', '~'), ',', '.'), '~', ',');
+
+/**
+	Using TRANSLATE
+**/
+SELECT TRANSLATE('123.456.789,00', '.,', ',.');
+
+---------------------------------------------------------------------------
+-- The REPLICATE function replicates a string a requested number of times
+-- Syntax: REPLICATE(string, n)
+---------------------------------------------------------------------------
+SELECT REPLICATE('abc', 3);
+
+/**
+	The following demonstrates the use of the REPLICATE function, along with
+	the RIGHT function and string concatenation.
+
+	The following query runs against the Productions.Suppliers table generates
+	a 10-digit string representation of the supplier ID integer with leading
+	zeros
+**/
+SELECT supplierid,
+	RIGHT(REPLICATE('0', 9) + CAST(supplierid AS VARCHAR(10)), 10) AS strsupplierid
+FROM Production.Suppliers;
+
+-----------------------------------------------------------------------------
+-- The STUFF function to remove a substring from a string and insert a new 
+-- substring instead.
+-- Syntax: STUFF(string,pos,delete_length,insert_string)
+-----------------------------------------------------------------------------
+SELECT STUFF('xyz', 2, 1, 'abc');
+
+/** Delete length of 0 **/
+SELECT STUFF('xyz', 2, 0, 'abc');
+
+----------------------------------------------------------------------------
+-- The UPPER and LOWER functions return the input string with all uppercase
+-- or lowercase characters respectively.
+-- Syntax: UPPER(string), LOWER(string)
+----------------------------------------------------------------------------
+
+SELECT UPPER('Christian Chesire');
+
+SELECT LOWER('Christian Chesire');
