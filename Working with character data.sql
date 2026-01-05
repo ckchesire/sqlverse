@@ -203,3 +203,267 @@ SELECT STUFF('xyz', 2, 0, 'abc');
 SELECT UPPER('Christian Chesire');
 
 SELECT LOWER('Christian Chesire');
+
+---------------------------------------------------------------------------------
+-- RTRIM, LTRIM, and TRIM functions.
+-- The various trim functions allow you to remove leading, trailing, or both
+-- leading and trailing characters from an input string. 
+-- The RTRIM and LTRIM functions return the input string with leading or trailing
+-- spaces removed, respectively.
+-- Syntax: RTRIM(string), LTRIM(string)
+----------------------------------------------------------------------------------
+/**
+	Remove both leading and trailing spaces
+**/
+
+SELECT RTRIM(LTRIM('    abc     '));
+
+/**
+	Simpler option is to use the TRIM option
+**/
+SELECT TRIM('    abc   ');
+
+--------------------------------------------------------------------------------
+-- The TRIM function has more sophisticated capabilities
+-- Syntax: TRIM([characters FROM]string)
+-- Enhanced TRIM function's syntax
+-- Syntax: TRIM([LEADING|TRAILING|BOTH][characters FROM]string)
+-- As for RTRIM and LTRIM functions, here is their enhanced syntax
+-- RTRIM(string,[characters]), LTRIM(string,[characters])
+--------------------------------------------------------------------------------
+SELECT
+	TRANSLATE(TRIM(TRANSLATE(TRIM(TRANSLATE(
+	'//\\ remove leading and trailing backward (\) and forward (/) slashes \\//',
+	' /', '~ ')), ' \', '^ ')), ' ^~', '\/ ')
+	AS outputstring;
+
+SELECT TRIM( '/\'
+			 FROM '//\\ remove leading and trailing backward (\) and forward (/) slashes  \\//' )
+		AS outputstring;
+
+/**
+	Instead of using:
+	RTRIM(string, [characters])
+
+	You can use:
+	TRIM(TRAILING [characters FROM] string)
+
+	And instead of using:
+	LTRIM(string, [characters])
+
+	You can use:
+	TRIM(LEADING [characters FROM] string)
+**/
+
+SELECT TRIM( LEADING '/\'
+			 FROM '//\\ remove leading and trailing backward (\) and forward (/) slashes  \\//' )
+		AS outputstring;
+
+SELECT TRIM( TRAILING '/\'
+			 FROM '//\\ remove leading and trailing backward (\) and forward (/) slashes  \\//' )
+		AS outputstring;
+
+SELECT TRIM( BOTH '/\'
+			 FROM '//\\ remove leading and trailing backward (\) and forward (/) slashes  \\//' )
+		AS outputstring;
+
+-----------------------------------------------------------------------------------------
+-- FORMAT function can be used to format an input value as a character string based on a 
+-- Microsoft.NET format string and an optional culture specification.
+-- Syntax: FORMAT(input,format_string,culture)
+-----------------------------------------------------------------------------------------
+SELECT supplierid,
+	RIGHT(REPLICATE('0', 9) + CAST(supplierid AS VARCHAR(10)), 10) AS strsupplierid
+FROM Production.Suppliers;
+
+-- SELECT FORMAT(1759, '0000000000');
+/**
+	The FORMAT function is usually more expensive than alternative T-SQL functions
+	that you use to format values. You should generally refrain from using it unless
+	you are willing to accept the performance penalty.
+**/
+SELECT supplierid,
+	FORMAT(supplierid, '0000000000') AS strsupplierid
+FROM Production.Suppliers;
+
+SELECT supplierid,
+	FORMAT(supplierid, 'd10') AS strsupplierid
+FROM Production.Suppliers;
+
+
+----------------------------------------------------------------------------
+-- The COMPRESS and DECOMPRESS functions, use the GZIP algorithm to compress
+-- and decompress the input, respectively.
+-- Syntax: COMPRESS(string), DECOMPRESS(string)
+----------------------------------------------------------------------------
+/**
+	The COMPRESS function accepts a character or binary string as an input
+	and returns a compressed VARBINARY(MAX) typed value.
+**/
+SELECT COMPRESS(N'This is my cv. Imagine it was much longer.');
+
+/**
+	Apply COMPRESS function to the input value and store result in a table
+**/
+INSERT INTO dbo.EmployeeCVs( empid, cv ) VALUES( @empid, COMPRESS(@cv) );
+
+/**
+	The DECOMPRESS function accepts a binary string as input and returns
+	a decompressed VARBINARY(MAX) typed value.
+
+	Note: if the value you originally compressed was of character string
+	type, you will need to explicitly cast the result of the DECOMPRESS
+	function to the target type
+**/
+SELECT DECOMPRESS(COMPRESS(N'This is my cv. Imagine it was much longer.'));
+
+SELECT
+	CAST(
+		DECOMPRESS(COMPRESS(N'This is my cv. Imagine it was much longer.'))
+			AS NVARCHAR(MAX));
+
+/**
+	Consider the EmployeeCVs table from the earlier example. To return the uncompressed
+	form of the employee resume, use the following query.
+**/
+SELECT empid, CAST(DECOMPRESS(cv) AS NVARCHAR(MAX)) AS cv
+FROM dbo.EmployeeCVs;
+
+-----------------------------------------------------------------------------------
+-- The STRING_SPLIT table function splits an input string with a separated list of 
+-- values into individual elements.
+-- Syntax: SELECT value FROM STRING_SPLIT(string, separator[,enable_ordinal]);
+-----------------------------------------------------------------------------------
+SELECT CAST(value AS INT) AS myvalue
+FROM STRING_SPLIT('10248,10249,10250', ',') AS S;
+
+/**
+	In case you are using SQL Server 2022 or later, here's an example with the ordinal
+	flag enabled.
+**/
+SELECT CAST(value AS INT) AS myvalue, ordinal
+FROM STRING_SPLIT('10248,10249,10250', ',', 1) AS S;
+
+
+-------------------------------------------------------------------------------------
+-- The STRING_AGG function concatenates the values of the input expression in the
+-- aggregated group. You can think of it as the inverse of the STRING_SPLIT function.
+-- Syntax: STRING_AGG(input, separator)[WITHIN GROUP(order_specification)]
+-------------------------------------------------------------------------------------
+/**
+	The function concatenates the values of the input argument expression in the
+	target group, separated by the separator argument.To guarantee the order of
+	concatenation, you specify the optional WITHIN GROUP clause along with the desired
+	ordering specification.
+
+	As an example, the following query returns the order IDs for each customer, ordered
+	by recency, using a comma as a separator.
+**/
+SELECT custid,
+	STRING_AGG(CAST(orderid AS VARCHAR(10)), ',')
+		WITHIN GROUP(ORDER BY orderdate DESC, orderid DESC) AS custorders
+FROM Sales.Orders
+GROUP BY custid;
+
+
+----------------------------------------------------------------------------------------
+-- The LIKE Predicate
+-- T-SQL provides a predicate called LIKE that you can use to check whether a character
+-- string matches a specified pattern. Similar patterns are use by the PATINDEX function
+----------------------------------------------------------------------------------------
+-- The %(percent) wildcard
+-- The percent sign represents a string of any size, including an empty string.
+---------------------------------------------------------------------------------------
+SELECT empid, lastname
+FROM HR.Employees
+WHERE lastname LIKE N'D%';
+
+/**
+	Note: Often you can use functions such as SUBSTRING and LEFT  instead of LIKE
+	predicate to represent the same meaning. But the LIKE predicate tends to get
+	optimized better - especially when the pattern starts with an known prefix.
+**/
+SELECT empid, lastname, SUBSTRING(lastname,1,1) AS lastnamefirstchar
+FROM HR.Employees
+WHERE SUBSTRING(lastname,1,1) = 'D';
+
+SELECT empid, lastname, LEFT(lastname,1) AS lastnamefirstchar
+FROM HR.Employees
+WHERE LEFT(lastname,1) = 'D';
+
+-------------------------------------------------------------------------
+-- The _(underscore) wildcard
+-- An underscore represents a single character
+-------------------------------------------------------------------------
+/**
+	The following query returns employees where the second character in the
+	last name is 'e';
+**/
+SELECT empid, lastname
+FROM HR.Employees
+WHERE lastname LIKE N'_e%';
+
+SELECT empid, lastname
+FROM HR.Employees
+WHERE lastname LIKE N'__w%';
+
+------------------------------------------------------------------------------
+-- The [<list of characters>] wildcard
+-- Square brackets with a list of characters(such as [ABC]) represent a single
+-- character that must be one of the characters specified in the list.
+------------------------------------------------------------------------------
+/**
+	The following query returns employees where the first character in the last
+	name is A,B,or C
+**/
+SELECT empid, lastname
+FROM HR.Employees
+WHERE lastname LIKE N'[ABC]%';
+
+-----------------------------------------------------------------------------
+-- The [<character>-<character>]wildcard
+-- Square brackets with a character range (such as[A-E]) represent a single
+-- character that must be within the specified range.
+-----------------------------------------------------------------------------
+/**
+	The following query returns employees where the first character in the last
+	name is a letter in the range A through E, inclusive.
+**/
+SELECT empid, lastname
+FROM HR.Employees
+WHERE lastname LIKE N'[A-E]%';
+
+-----------------------------------------------------------------------------
+-- The [^<character list or range>] wildcard
+-- Square brackets with a caret sign(^) followed by a character list or range
+-- (such as [^A-E]) represent a single character that is not in the specified
+-- character list or range.
+-----------------------------------------------------------------------------
+SELECT empid, lastname
+FROM HR.Employees
+WHERE lastname LIKE N'[^A-E]%';
+
+-------------------------------------------------------------------------
+-- The ESCAPE character
+-- If you want to search for a character that is also used as a wildcard
+-- (such as %,_,[,or]), you can use an escape character. 
+-------------------------------------------------------------------------
+/**
+	Specify the character that you know for sure doesn't appear in the data
+	as the escape character in front of the character you are looking for,
+	and specify the keyword ESCAPE followed by the escape character right
+	after the pattern.
+
+	For example; to check whether a column called col1 contains an underscore,
+**/
+-- USE 
+col1 LIKE '%!_%' ESCAPE '!';
+
+/**
+	For the wildcards %,_,and [,you can use square brackets instead of an escape
+	character. For example:
+**/
+-- INSTEAD OF 
+col1 LIKE '%!_%' ESCAPE '!';
+-- you can use
+col1 LIKE '%[_]%';
