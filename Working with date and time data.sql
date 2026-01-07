@@ -391,3 +391,286 @@ SELECT
 SELECT SYSDATETIMEOFFSET() AT TIME ZONE 'Pacific Standard Time';
 
 SELECT SYSDATETIMEOFFSET() AT TIME ZONE 'E. Africa Standard Time';
+
+------------------------------------------------------------------------------
+-- The DATEADD function
+-- You can use the DATEADD function to add a specified number of units of a 
+-- specified date part to an input date and time value.
+-- Syntax:
+--  DATEADD(part,n,dt_val)
+-- Valid values include year,quarter,month,dayofyear,day,week,weekday,hour,
+-- minute,second,millisecond,and nanosecond.
+------------------------------------------------------------------------------
+/**
+	The following code adds one year to February 12,2022:
+**/
+SELECT DATEADD(year, 1, '20220212');
+SELECT DATEADD(day, 1, '20220212');
+
+------------------------------------------------------------------------------
+-- The DATEDIFF and DATEDIFF_BIG Functions
+-- Used to return the difference between two date and time values in terms
+-- of a specified date part.
+-- The former returns a value typed as INT(a 4-byte integer), and the latter
+-- returns a value typed as BIGINT(an 8-byte integer).
+-- Syntax:
+--   DATEDIFF(part,dt_val1,dt_val2), DATEDIFF_BIG(part,dt_val1,dt_val2)
+------------------------------------------------------------------------------
+
+/**
+	The following code returns the difference in terms of days between two
+	values.
+**/
+SELECT DATEDIFF(day, '20210212', '20220212');
+
+/**
+	There are certain differences that result in an integer that is greater
+	than the maximum INT value (2,147,483,647). For example, the difference
+	in milliseconds between January 1,0001 and February 12,2022 is 
+	63,780,220,800,000. You can't use the DATEDIFF function to compute such
+	a difference, but you can achieve this with the DATEDIFF_BIG function.
+**/
+SELECT DATEDIFF_BIG(millisecond, '00010101', '20220212');
+SELECT DATEDIFF(millisecond, '00010101', '20220212'); -- results in an overflow
+
+/**
+	If you need to compute the beginning of the day that corresponds to an input
+	date and time value, you can simply cast the input value to the DATE type
+	and then CAST the result to the target type.
+**/
+DECLARE @InputDateTime DATETIME = '2026-01-07 14:35:42';
+SELECT CAST(CAST(@InputDateTime AS DATE) AS DATETIME) AS StartOfDay;
+
+SELECT CAST(CAST(CURRENT_TIMESTAMP AS DATE) AS DATETIME) AS StartOfDay;
+
+-- Using DATETIME2
+DECLARE @InputDateTime2 DATETIME2 = '2026-01-07 14:35:42.1234567';
+
+SELECT CAST(CAST(@InputDateTime2 AS DATE) AS DATETIME2) AS StartOfDay;
+
+/**
+	Compute the beginning of the day that corresponds to the input 
+	date and time value
+**/
+SELECT
+	DATEADD(
+	  day,
+	  DATEDIFF(day, '19000101', SYSDATETIME()), '19000101');
+
+/**
+	If you use this expression with a month part instead of a day
+	and make sure to use an anchor that is the first day of a month
+	(as in this example), you get the first day of the current month:
+**/
+SELECT
+  DATEADD(
+    month,
+	DATEDIFF(month, '19000101', SYSDATETIME()), '19000101');
+
+/**
+	Similarly, by using a year part and an anchor that is the first 
+	day of a year, you get back the first day of the current year.
+**/
+SELECT
+  DATEADD(
+    year,
+	DATEDIFF(year, '19000101', SYSDATETIME()), '19000101');
+
+SELECT
+  DATEADD(
+    year,
+	DATEDIFF(year, '20000101', SYSDATETIME()), '20000101');
+
+/**
+	If you want the last day of the month or year, simply use an
+	anchor that is the last day of the month or year.
+
+	The following expression returns the last day of the current
+	year.
+**/
+SELECT
+  DATEADD(
+    year,
+	DATEDIFF(year, '18991231', SYSDATETIME()), '18991231');
+
+/**
+	Getting last day of the month
+**/
+SELECT
+  DATEADD(
+    month,
+	DATEDIFF(month, '18991231', SYSDATETIME()), '18991231');
+
+/**
+	Getting the end of the quater
+**/
+SELECT
+  DATEADD(
+    quarter,
+	DATEDIFF(quarter, '18991231', SYSDATETIME()), '18991231');
+
+-------------------------------------------------------------------------------
+-- The DATEPART function
+-- Returns an integer representing a requested part of date and time value
+-- Syntax:
+--	DATEPART(part, dt_val)
+-- Valid values for the part argument include year,quarter,month,dayofyear,day,
+-- week,weekday,hour,minute,second,milllisecond,microsecond,nanosecond,tzoffset
+-- (time zone offset), and iso_week(ISO-based week number)
+-------------------------------------------------------------------------------
+
+SELECT DATEPART(month, '20220212');
+
+SELECT DATEPART(dayofyear, '20220212');
+
+/**
+	For this function, the parts day,weekday, and dayofyear, have different
+	meanings. The part 'day' means the number of the day of the month. The
+	part 'weekday' means the number of the day of the week. The part 'dayofyear'
+	means the number of the day of the year.
+
+	The following example extracts all three parts from an input date.
+**/
+SELECT
+  DATENAME(weekday, '20220212') AS day_name,
+  DATEPART(day, '20220212') AS part_day,
+  DATEPART(weekday, '20220212') AS part_weekday,
+  DATEPART(dayofyear, '20220212') AS part_dayofyear;
+
+SELECT
+  DATENAME(weekday, SYSDATETIME()) AS day_name,
+  DATEPART(day, SYSDATETIME()) AS part_day,
+  DATEPART(weekday, SYSDATETIME()) AS part_weekday,
+  DATEPART(dayofyear, SYSDATETIME()) AS part_dayofyear;
+
+-------------------------------------------------------------------------------
+-- The DATENAME function
+-- Returns a character string representing a part of a date and time value.
+-- Syntax:
+--   DATENAME(dt_val,part)
+-------------------------------------------------------------------------------
+/**
+	The following code returns the month name of the given input value
+**/
+SELECT DATENAME(month, '20220212');
+
+/**
+	If a part is requested that has no name and only a numeric value (such
+	as year), the DATENAME function returns its numeric value as a character
+	string.
+
+	For example, the following code returns '2022'
+**/
+SELECT DATENAME(year, '20220212');
+
+-- Returns 1 for Q1.
+SELECT DATENAME(quarter, '20220212');
+
+-------------------------------------------------------------------------------
+-- The DATETRUNC function
+-- Truncates, or floors, the input date and time value to the beginning of the
+-- specified part.
+-- Syntax:
+--   DATETRUNC(part,dt_val)
+-------------------------------------------------------------------------------
+/**
+	The following code returns the beginning of month date corresponding to the
+	input value, at midnight, as a DATETIME2(7)-typed value:
+**/
+SELECT DATETRUNC(month, '20220212');
+
+SELECT DATETRUNC(day, '20220212');
+
+SELECT DATETRUNC(year, '20220212');
+
+-------------------------------------------------------------------------------
+-- The ISDATE function
+-- Accepts a character string as input and returns 1 if it is convertible to a
+-- date and time data type and 0 if it isn't
+-- Syntax:
+--   ISDATE(string)
+-------------------------------------------------------------------------------
+/**
+	For example the following code returns 1
+**/
+SELECT ISDATE('20220212');
+/**
+	And the following code returns 0
+**/
+SELECT ISDATE('20220230');
+
+----------------------------------------------------------------------------------------
+-- The FROMPARTS function
+----------------------------------------------------------------------------------------
+-- Accepts integer inputs representing parts of a date and time value and
+-- construct a value of the requested type from those parts.
+-- Syntax:
+--		DATEFROMPARTS(year,month,day)
+--		DATETIME2FROMPARTS(year,month,day,hour,minute,seconds,fractions,precision)
+--		DATETIMEFROMPARTS(year,month,day,hour,minute,seconds,milliseconds)
+--		DATETIMEOFFSETFROMPARTS(year,month,day,hour,minute,seconds,fractions,hour_offset,
+--		minute_offset,precision)
+--		SMALLDATETIMEFROMPARTS(year,month,day,hour,minute)
+--		TIMEFROMPARTS(hour,minute,seconds,fractions,precision)
+-----------------------------------------------------------------------------------------
+
+SELECT
+	DATEFROMPARTS(2022, 02, 12),
+	DATETIME2FROMPARTS(2022, 02, 12, 13, 30, 5, 1, 7),
+	DATETIMEFROMPARTS(2022, 02, 12, 13, 30, 5, 997),
+	DATETIMEOFFSETFROMPARTS(2022, 02, 12, 13, 30, 5, 1, -8, 0, 7),
+	SMALLDATETIMEFROMPARTS(2022, 02, 12, 13, 30),
+	TIMEFROMPARTS(13, 30, 5, 1, 7);
+
+----------------------------------------------------------------------------------------
+-- The EOMONTH function 
+-- Accepts an input date and time value and returns the respective end-of-month date as
+-- a DATE typed value. The function also supports an optional second argument indicating
+-- how many months to add (or subtract, if negative).
+-- Syntax:
+--	EOMONTH(input[,months_to_add])
+----------------------------------------------------------------------------------------
+/**
+	The following code returns the end of the current month
+**/
+SELECT EOMONTH(SYSDATETIME());
+
+/**
+	The following query returns orders placed on the last day of the month.
+**/
+SELECT orderid, orderdate, custid, empid
+FROM Sales.Orders
+WHERE orderdate = EOMONTH(orderdate);
+
+/**
+	Alternative for computing the last day of the month that corresponds
+	to the input date value:
+**/
+SELECT orderid, orderdate, custid, empid
+FROM Sales.Orders
+WHERE orderdate = DATEADD(month, DATEDIFF(month, '18991231', orderdate), '18991231');
+
+----------------------------------------------------------------------------------------
+-- The GENERATE_SERIES function
+-- Is a table function that returns a sequence of numbers in the requested range.
+-- Syntax:
+--	SELECT value FROM GENERATE_SERIES(start_value, stop_value[,step_value]);
+-- The start_value and stop_value inputs can be of any of the types TINYINT, SMALLINT,
+-- INT, BIGINT, DECIMAL, or NUMERIC, and the two must have matching types. The type of
+-- the result column value is the same as the type of the inputs start_value and
+-- stop_value
+----------------------------------------------------------------------------------------
+/**
+	The following code returns a sequence of integers between 1 and 10:
+**/
+SELECT value
+FROM GENERATE_SERIES( 1, 10 ) AS N;
+
+/**
+	The following code generates a sequence of all dates in the year
+	2022:
+**/
+DECLARE @startdate AS DATE = '20220101', @enddate AS DATE = '20221231';
+
+SELECT DATEADD(day, value, @startdate) AS dt
+FROM GENERATE_SERIES( 0, DATEDIFF(day, @startdate, @enddate) ) AS N
