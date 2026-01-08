@@ -26,9 +26,9 @@ WHERE orderdate >= '20210601'
 -- before the last day of the month.
 -----------------------------------------------------------
 
--- SELECT orderid, orderdate, custid, empid
--- FROM Sales.Orders
--- WHERE orderdate;
+SELECT orderid, orderdate, custid, empid
+FROM Sales.Orders
+WHERE orderdate = DATEADD(day, -1, EOMONTH(orderdate));
 
 ------------------------------------------------------------
 -- Ex3: Query against HR.Employees that returns 
@@ -78,3 +78,38 @@ SELECT empid, lastname
 FROM HR.Employees
 WHERE lastname COLLATE Latin1_General_BIN LIKE N'[a-z]%';
 
+--------------------------------------------------------------
+-- Ex7: Query against the Sales.Orders table that returns the
+-- three shipped to countries with the highest average freight
+-- for orders placed in 2021
+--------------------------------------------------------------
+SELECT TOP 3 shipcountry, AVG(freight) AS avgfreight
+FROM Sales.Orders
+WHERE YEAR(Orderdate) = 2021 
+GROUP BY shipcountry
+ORDER BY avgfreight DESC;
+
+/**
+	The above solution may be inefficient as it is unable to
+	maximize on indexes.
+
+	The following approach is recommended.
+**/
+SELECT TOP (3) shipcountry, AVG(freight) AS avgfreight
+FROM Sales.Orders
+WHERE orderdate >= '20210101' AND  orderdate < '20220101'
+GROUP BY shipcountry
+ORDER BY avgfreight DESC;
+
+/**
+	You can use the standard OFFSET-FETCH filter instead of
+	the proprietary TOP filter.
+
+	Revised solution using OFFSET-FETCH filter
+**/
+SELECT shipcountry, AVG(freight) AS avgfreight
+FROM Sales.Orders
+WHERE orderdate >= '20210101' AND  orderdate < '20220101'
+GROUP BY shipcountry
+ORDER BY avgfreight DESC
+OFFSET 0 ROWS FETCH NEXT 3 ROWS ONLY;
