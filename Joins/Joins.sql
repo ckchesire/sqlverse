@@ -203,13 +203,12 @@ FROM Sales.OrderDetails;
 SELECT * FROM sys.triggers 
 WHERE parent_id = OBJECT_ID('Sales.OrderDetails');
 
-
-SELECT * FROM Sales.OrderDetailsAudit;
-
 UPDATE Sales.OrderDetails 
 SET qty = qty + 1
 WHERE orderid = 10248
   AND productid = 72;
+
+SELECT * FROM Sales.OrderDetailsAudit;
 
 SELECT OD.orderid, OD.productid, OD.qty,
   ODA.dt, ODA.loginname, ODA.oldval, ODA.newval
@@ -220,3 +219,132 @@ FROM Sales.OrderDetails AS OD
 WHERE ODA.columnname = N'qty';
 
 
+---------------------------------------------------------------------------
+-- Non-equi joins
+-- When a join condition involves only an equality operator, the join is 
+-- said to be an equi join. When a join condition involves any operator
+-- besides equality, the join is said to be a non-equi join.
+---------------------------------------------------------------------------
+/**
+	As an example of a non-equi join, the following query joins two instances
+	of the Employees table to produce unique pairs of employees.
+
+	Notice the predicate specified in the ON clause. The purpose of the query
+	is to produce unique pairs of employees.
+**/
+SELECT
+	E1.empid, E1.firstname, E1.lastname,
+	E2.empid, E2.firstname, E2.lastname
+FROM HR.Employees AS E1
+	INNER JOIN HR.Employees AS E2
+	  ON E1.empid < E2.empid;
+
+---------------------------------------------------------------------------
+-- Multi-join queries
+-- A join table operator operates only on two tables, but a single query
+-- can have multiple joins.
+-- In general, when more than one table operator appears in the FROM clause
+-- ,the table operators are logically processed in written order.
+-- If there are multiple joins in the FROM clause, the first join operates
+-- on the two base tables, but all other joins get the result of the
+-- preceding join as their left input.
+---------------------------------------------------------------------------
+SELECT
+	C.custid, C.companyname, O.orderid,
+	OD.productid, OD.qty
+FROM Sales.Customers AS C
+	INNER JOIN Sales.Orders AS O
+	  ON C.custid = O.custid
+	INNER JOIN Sales.OrderDetails AS OD
+	  ON O.orderid = OD.orderid;
+
+---------------------------------------------------------------------------
+-- Outer Joins
+---------------------------------------------------------------------------
+-- The outer joins apply the two logical procesing phases that inner joins
+-- apply (Cartesian Product and the ON filter), plus a third phase called
+-- Adding Outer Rows that is unique to this type of join.
+-- In an outer join, you mark a table as a preserved table by using the 
+-- keywords LEFT OUTER JOIN, RIGHT OUTER JOIN, or FULL OUTER JOIN between
+-- the table names.The OUTER keyword is optional.
+---------------------------------------------------------------------------
+/**
+	The following query joins the Customers and Orders tables, based on a
+	match between the customer's customer ID and the order's customer ID,
+	to return customers and their orders.
+
+	The join type is a left outer join; therefore, the query also returns
+	customers who did not place any orders.
+**/
+
+SELECT C.custid, C.companyname, O.orderid
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN Sales.Orders AS O
+	ON C.custid = O.custid;
+
+/**
+	When you need to express a predicate that is not final - meaning a
+	predicate that determines which rows to match from the nonpreserved
+	side - specify the predicate in the ON clause.
+
+	When you need a filter to be applied after outer rows are produced,
+	and you want the filter to be final, specify the predicate in the
+	WHERE clause.Conceptually, the WHERE clause is processed after the
+	FROM clause - specifically, after all table operators have been processed
+	and(in the case of outer joins) after all outer rows have been produced
+
+	To recap, in the ON clause you specify nonfinal, or matching, predicates.
+	In the WHERE clause you specify final, or filtering, predicates.
+
+	The following is an example to return only customers who did not place
+	any orders or, more technically, you need to return only outer rows.
+**/
+SELECT C.custid, C.companyname, O.orderid
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN Sales.Orders AS O
+    ON C.custid = O.custid
+WHERE O.orderid IS NULL;
+
+---------------------------------------------------------------------------
+-- Including Missing Values
+-- You can use outer joins to identify and include missing values when
+-- querying data.
+---------------------------------------------------------------------------
+/**
+	Suppose you need to query all orders from the Orders table. You need to
+	ensure that you get atleast one row in the output for each date in the
+	range January 1,2020 through December 31,2022. You don't want to do 
+	anything special with dates within the range that have orders, but you
+	do want the output to include the dates with no orders, with NULLs as
+	placeholders in the attributes of the order.
+
+	To solve the problem, you can first write a query that returns a sequence
+	of all dates in the requested period. You can then perform a left outer join
+	between that set and the Orders table. This way, the result also includes
+	missing dates.
+**/
+
+-- Query to return a sequence of all dates in the range January 1,2020 through
+-- December 31,2022
+SELECT DATEADD(day, n-1, CAST('20200101' AS DATE)) AS orderdate
+FROM dbo.Nums
+WHERE n <= DATEDIFF(day, '20200101', '20221231') + 1
+ORDER BY orderdate;
+
+-- Next step is to extend the previous query, adding a left outer join between
+-- Nums and the Orders tables.
+SELECT DATEADD(day, Nums.n - 1, CAST('20200101' AS DATE)) AS orderdate,
+  O.orderid, O.custid, O.empid
+FROM dbo.Nums
+  LEFT OUTER JOIN Sales.Orders AS O
+    ON DATEADD(day, Nums.n - 1, CAST('20200101' AS DATE)) = O.orderdate
+WHERE Nums.n <= DATEDIFF(day, '20200101', '20221231') + 1
+ORDER BY orderdate;
+
+-- Generate dates using generate series
+SELECT CAST (DATEADD(day, value, '20200101') AS DATE) AS orderdate
+FROM GENERATE_SERIES(
+		0,
+		DATEDIFF(day, '20200101', '20221231')
+	)
+ORDER BY orderdate;
