@@ -140,3 +140,83 @@ FROM HR.Employees AS E
 SELECT E.empid, E.firstname, E.lastname, O.orderid
 FROM HR.Employees AS E, Sales.Orders AS O
 WHERE E.empid = O.empid;
+
+
+-------------------------------------------------------------------------
+-- More Join Examples
+-- We cover composite joins, non-equi joins, and multi-join queries
+-------------------------------------------------------------------------
+
+---------------------------------------------------------------------------
+-- Composite Joins
+-- A composite join is simply a join for which you need to match multiple
+-- attributes from each side.
+-- You usually need such a join when a primary key-foreign key relationship
+-- is based on more than one attribute.
+---------------------------------------------------------------------------
+/**
+	Suppose you have a foreign key defined on dbo.Table2, columns col1,col2,
+	referencing dbo.Table1, columns col1,col2, and you need to write a query
+	that joins the two based on this relationship.
+	
+	The FROM clause of the query would look like this:
+**/
+FROM dbo.Table1 AS T1
+  INNER JOIN dbo.Table2 AS T2
+    ON T1.col1 = T2.col1
+	AND T1.col2 = T2.col2
+
+/**
+	Create audit updates to column values against the OrderDetails
+	table.
+
+	Create a custom auditing table called OrderDetailsAudit.
+**/
+
+USE TSQLV6;
+
+DROP TABLE IF EXISTS Sales.OrderDetailsAudit;
+
+CREATE TABLE Sales.OrderDetailsAudit
+(
+	lsn			INT NOT NULL IDENTITY,
+	orderid		INT NOT NULL,
+	productid	INT NOT NULL,
+	dt			DATETIME NOT NULL,
+	loginname	sysname NOT NULL,
+	columnname	sysname NOT NULL,
+	oldval		SQL_VARIANT,
+	newval		SQL_VARIANT,
+	CONSTRAINT PK_OrderDetailsAudit PRIMARY KEY(lsn),
+	CONSTRAINT FK_OrderDetailsAudit_OrderDetails
+		FOREIGN KEY(orderid, productid)
+		REFERENCES Sales.OrderDetails(orderid, productid)
+);
+
+SELECT TOP 5 * 
+FROM Sales.OrderDetails;
+
+/*
+	Check for the trigger on OrderDetails table,
+	used to update the OrderDetailsAudit table.
+*/
+SELECT * FROM sys.triggers 
+WHERE parent_id = OBJECT_ID('Sales.OrderDetails');
+
+
+SELECT * FROM Sales.OrderDetailsAudit;
+
+UPDATE Sales.OrderDetails 
+SET qty = qty + 1
+WHERE orderid = 10248
+  AND productid = 72;
+
+SELECT OD.orderid, OD.productid, OD.qty,
+  ODA.dt, ODA.loginname, ODA.oldval, ODA.newval
+FROM Sales.OrderDetails AS OD
+  INNER JOIN Sales.OrderDetailsAudit AS ODA
+    ON OD.orderid = ODA.orderid
+	AND OD.productid = ODA.productid
+WHERE ODA.columnname = N'qty';
+
+
