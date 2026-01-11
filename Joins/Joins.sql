@@ -348,3 +348,168 @@ FROM GENERATE_SERIES(
 		DATEDIFF(day, '20200101', '20221231')
 	)
 ORDER BY orderdate;
+
+---------------------------------------------------------------------------
+-- Filtering attributes from the nonpreserved side of an outer join
+------------------------------------------------------------------------------
+-- When you need to review code involving outer joins to look for logical
+-- bugs, one thing you should examine is the WHERE clause. If the predicate
+-- in the WHERE clause refers to an attribute from the nonpreserved side of
+-- the join using an expression in the form <attribute> <operator> <value>,
+-- it's usually an indication of a bug.
+--
+-- This is because attributes from the non preserved side of the join are
+-- NULLs in outer rows, and an expression in the from NULL <operator> <value>
+-- yields UNKNOWN (unless it's the IS NULL operator explicitly looking for
+-- NULLs, or the distinct predicat IS [NOT] DISTINCT FROM). Recall that a 
+-- WHERE clause filters UNKNOWN out. Such a predicate in the WHERE clause
+-- causes all outer rows to be filtered out. Effectively, the join becomes an
+-- inner join.
+------------------------------------------------------------------------------
+
+/**
+	Consider the following query.
+
+	The predicate O.orderddate >= '20220101' in the WHERE clause evaluates
+	to UNKNOWN for all outer rows, because those have a NULL in the O.orderdate
+	attribute. All outer rows are eliminated by the WHERE filter.
+**/
+SELECT C.custid, C.companyname, O.orderid, O.orderdate
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN Sales.Orders AS O
+    ON C.custid = O.custid
+WHERE O.orderdate >= '20220101';
+
+/**
+	Inorder to return the outer rows we use the filter in the ON predicate
+**/
+SELECT C.custid, C.companyname, O.orderid, O.orderdate
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN Sales.Orders AS O
+    ON C.custid = O.custid AND O.orderdate >='20220101';
+
+-------------------------------------------------------------------------------
+-- Using Outer Joins in a Multi-Join Query
+-------------------------------------------------------------------------------
+-- Recall the discussion about all-at-once operations in "Single-table queries"
+-- The concept describes the fact that all expressions that appear in the same
+-- logical query processing phase are evaluated as a set, at the same point in
+-- time. However, this concept is not applicable to the processing of table 
+-- operators in the FROM phase. Table operators are logically evaluated in 
+-- written order. Rearranging the order in which outer joins are processed might
+-- result in different output, so you cannot rearrange the at will.
+-------------------------------------------------------------------------------
+/**
+	Some interesting bugs have to do with the logical order in which outer joins
+	are processed.
+
+	Suppose you write a multi-join query with an outer join between two tables,
+	followed by an inner join with a third table. If the predicate in the inner
+	join's ON clause compares an attribute from the nonpreserved side  of the 
+	outer join and an attribute from the third table, all outer rows are discarded.
+
+	Remember that outer rows have NULLs in the attributes from the nonpreserved 
+	side of the join, and comparing a NULL with anything yields UNKNOWN. UNKNOWN
+	is filtered out by the ON filter. In other words, such a predicate nullifies
+	the outer join, effectively turning it into an inner join.
+
+	Consider the following query.
+**/
+SELECT C.custid, O.orderid, OD.productid, OD.qty
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN Sales.Orders AS O
+    ON C.custid = O.custid
+  INNER JOIN Sales.OrderDetails AS OD
+    ON O.orderid = OD.orderid;
+
+/**
+	Generally, outer rows are dropped whenever any kind of outer join(left, right, or
+	full) is followed by a subsequent inner join or right outer join. That's assuming
+	, of course, that the join condition compares the NULLS from the left side with
+	something from the right side.
+
+	There are several ways to get around the problem if you want to return customers
+	with no orders in the output.
+
+	One option is to use a left outer join in the second join as well.
+**/
+SELECT C.custid, O.orderid, OD.productid, OD.qty
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN Sales.Orders AS O
+    ON C.custid = O.custid
+  LEFT OUTER JOIN Sales.OrderDetails AS OD
+    ON O.orderid = OD.orderid;
+
+/**
+	The above solution is usually not a good one, because it preserves
+	all  rows from Orders. What if there were rows in Orders that didn't
+	have matches in OrderDetails, and you wanted those rows to be discarded.
+
+	What you want is an inner join between Orders and OrderDetails
+
+	A second option is to use an inner join between Orders and OrderDetails,
+	and then join the result with the Customers table using a right outer join.
+
+	This way, the outer rows are produced by the last join and are not filtered out
+**/
+SELECT C.custid, O.orderid, OD.productid, OD.qty
+FROM Sales.Orders AS O
+  INNER JOIN Sales.OrderDetails AS OD
+    ON O.orderid = OD.orderid
+  RIGHT OUTER JOIN Sales.Customers AS C
+    ON O.custid = C.custid;
+
+/**
+	A third option is to consider the inner join between Orders and
+	OrderDetails as its own unit. Then, apply a left outer join between
+	the Customers table and that unit.
+
+	Below we are essentially nesting on join within another. A technique
+	referred to as nested joins.
+**/
+SELECT C.custid, O.orderid, OD.productid, OD.qty
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN
+	  (Sales.Orders AS O
+	     INNER JOIN Sales.OrderDetails AS OD
+		   ON O.orderid = OD.orderid)
+	ON C.custid = O.custid;
+
+-------------------------------------------------------------------------------
+-- Using the COUNT aggregate with outer joins
+-------------------------------------------------------------------------------
+-- Another common bug involves using COUNT with outer joins. When you group the
+-- result of an outer join and use the COUNT(*) aggregate, the aggregate takes
+-- into consideration both inner rows and outer rows, because it counts rows
+-- regardless of their contents. Usually, you're not supposed to take outer 
+-- rows into consideration for the purpose of counting.
+-------------------------------------------------------------------------------
+/**
+	For example, the following query is supposed to return the count of orders
+	for each customer.
+
+	The problem is the below query returns customer such as 22 and 57, who did
+	not place orders, each have an outer row in the result of the join; therefore
+	,they show up in the output with a count of 1
+**/
+SELECT C.custid, COUNT(*) AS numorders
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN Sales.Orders AS O
+    ON C.custid = O.custid
+GROUP BY C.custid;
+
+/**
+	The COUNT(*) aggregate function cannot detect whether a row 
+	really represents an order. To fix the problem, you should use
+	COUNT(<column>) instead of COUNT(*) and provide a column from 
+	the non preserved side of the join. This way, the COUNT() aggregate
+	ignores outer rows because they have a NULL in that column.
+
+	Remember to use a column that can only be NULL in case the row is
+	an outer row - for example, the primary key column orderid:
+**/
+SELECT C.custid, COUNT(O.orderid) AS numorders
+FROM Sales.Customers AS C
+  LEFT OUTER JOIN Sales.Orders AS O
+    ON C.custid = O.custid
+GROUP BY C.custid;
