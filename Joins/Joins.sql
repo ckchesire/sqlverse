@@ -289,7 +289,7 @@ FROM Sales.Customers AS C
 
 	When you need a filter to be applied after outer rows are produced,
 	and you want the filter to be final, specify the predicate in the
-	WHERE clause.Conceptually, the WHERE clause is processed after the
+	WHERE clause. Conceptually, the WHERE clause is processed after the
 	FROM clause - specifically, after all table operators have been processed
 	and(in the case of outer joins) after all outer rows have been produced
 
