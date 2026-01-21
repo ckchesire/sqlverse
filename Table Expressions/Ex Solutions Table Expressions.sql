@@ -49,3 +49,18 @@ WITH C AS
 SELECT orderid, orderdate, custid, empid, endofyear
 FROM C
 where orderdate <> endofyear;
+
+--  Another solution using derived table
+SELECT orderid, orderdate, custid, empid, endofyear
+FROM (SELECT *,
+	  DATEFROMPARTS(YEAR(orderdate), 12, 31) AS endofyear
+	  FROM Sales.Orders) AS D;
+
+---------------------------------------------------------------
+-- Ex2-1: Write a query that returns the maximum value in the
+-- orderdate column for each employee
+---------------------------------------------------------------
+
+SELECT empid, max(orderdate) AS maxorderdate
+FROM Sales.Orders
+GROUP BY empid;
