@@ -120,3 +120,33 @@ SELECT * FROM OrdersRN WHERE rownum BETWEEN 11 AND 20;
 	SELECT clause, assign an alias to the result column, and refer to that 
 	alias in the WHERE clause of the outer query.
 **/
+
+----------------------------------------------------------------
+-- Ex4: Write a solution using recursive CTE that returns the
+-- management chain leading to Patricia Doyle (employee id 9)
+----------------------------------------------------------------
+-- The general form of a basic recursive CTE looks like the following.
+--		WITH <CTE_NAME>[(<target_column_list>)]
+--		AS
+--		(
+--			<anchor_member>
+--			UNION ALL
+--			<recursive_member>
+--		)
+--		<outer_query_against_CTE>;
+--
+WITH Mgt_Chain AS
+(
+	SELECT empid, mgrid, firstname, lastname
+	FROM HR.Employees
+	WHERE empid = 9
+
+	UNION ALL
+	
+	SELECT C.empid, C.mgrid, C.firstname, C.lastname
+	FROM Mgt_Chain AS P
+	 INNER JOIN HR.Employees AS C
+	 ON P.mgrid =  C.empid
+)
+SELECT empid, mgrid, firstname, lastname
+FROM Mgt_Chain;
