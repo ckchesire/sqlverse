@@ -61,6 +61,62 @@ FROM (SELECT *,
 -- orderdate column for each employee
 ---------------------------------------------------------------
 
-SELECT empid, max(orderdate) AS maxorderdate
+SELECT empid, MAX(orderdate) AS maxorderdate
 FROM Sales.Orders
 GROUP BY empid;
+
+----------------------------------------------------------------
+-- Ex2-2: Encapsulate the query from Exercise 2-1 in a derived
+-- table. Write a join query between the derived table and the
+-- Orders table to return the orders with the maximum order date
+-- for each employee.
+----------------------------------------------------------------
+SELECT 
+	O.empid, O.orderdate, O.orderid, O.custid 
+FROM Sales.Orders AS O
+  INNER JOIN
+	(SELECT empid, MAX(orderdate) AS maxorderdate
+	FROM Sales.Orders 
+	GROUP BY empid) AS D
+  ON O.empid = D.empid
+  AND O.orderdate = D.maxorderdate;
+
+----------------------------------------------------------------
+-- Ex3-1: Write a query that calculates a row number for each
+-- order based on orderdate, orderid ordering.
+----------------------------------------------------------------
+SELECT
+	orderid, orderdate, custid, empid,
+	ROW_NUMBER() OVER(ORDER BY orderdate, orderid) AS rownum
+FROM Sales.Orders;
+
+----------------------------------------------------------------
+-- Ex3-2: Write a query that returns rows with row numbers 11 
+-- through 20 based on the row-number definition in Ex3-1. Use
+-- CTE to encapsulate the code from Ex3-1.
+----------------------------------------------------------------
+WITH C AS
+(
+	SELECT orderid, orderdate, custid, empid,
+	 ROW_NUMBER() OVER(ORDER BY orderdate, orderid) AS rownum
+	FROM Sales.Orders
+)
+SELECT * FROM C WHERE rownum >= 11 AND rownum <= 20;
+
+WITH OrdersRN AS
+(
+	SELECT orderid, orderdate, custid, empid, 
+	 ROW_NUMBER() OVER(ORDER BY orderdate, orderid) AS rownum
+	FROM Sales.Orders
+)
+SELECT * FROM OrdersRN WHERE rownum BETWEEN 11 AND 20;
+
+/**
+	You might wonder why you need a table expression here. Window functions
+	(such as the ROW_NUMBER function)are allowed only in SELECT and ORDER BY
+	clauses of a query, and not directly in the WHERE clause.
+
+	By using a table expression, you can invoke the ROW_NUMBER function in the
+	SELECT clause, assign an alias to the result column, and refer to that 
+	alias in the WHERE clause of the outer query.
+**/
