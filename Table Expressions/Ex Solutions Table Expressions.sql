@@ -255,3 +255,25 @@ RETURN
 GO
 
 SELECT * FROM Production.TopProducts(2, 3);
+
+---------------------------------------------------------------------
+-- Ex6-2: Using the CROSS APPLY operator and the function you created
+-- in Ex6-1, return the two most expensive products for each supplier
+---------------------------------------------------------------------
+
+-- SELECT * FROM Production.Suppliers 
+SELECT S.supplierid, S.companyname, 
+T.productid, T.productname, T.unitprice
+FROM Production.Suppliers AS S
+  CROSS APPLY Production.TopProducts(S.supplierid, 2) AS T;
+
+/**
+	Here we write a query against the Production.Suppliers table and
+	use the CROSS APPLY operator to apply the function we defined 
+	in the previous step to each supplier. The query is supposed to
+	return the two most expensive products for each supplier. The
+	following is the solution query.
+**/
+SELECT S.supplierid, S.companyname, P.productid, P.productname, P.unitprice
+FROM Production.Suppliers AS S
+  CROSS APPLY Production.TopProducts(S.supplierid, 2) AS P;
