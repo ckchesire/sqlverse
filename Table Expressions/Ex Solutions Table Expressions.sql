@@ -193,3 +193,65 @@ GROUP BY
 GO
 
 SELECT * FROM Sales.VEmpOrders ORDER BY empid, orderyear;
+
+----------------------------------------------------------------
+-- Ex5-2: Write a query against Sales.VEmpOrders that returns
+-- the running total quantity for each employee and year.
+----------------------------------------------------------------
+SELECT empid, orderyear, qty,
+	(SELECT SUM(A2.qty)
+	 FROM Sales.VEmpOrders AS A2
+	 WHERE A2.orderyear <= A1.orderyear
+	 AND A1.empid = A2.empid
+	 ) AS runqty
+FROM Sales.VEmpOrders AS A1
+ORDER BY empid, orderyear;
+
+---------------------------------------------------------------------
+-- Ex6-1: Create an inline TVF that accepts as inputs a supplier ID
+-- (@supid AS INT) and a requested number of products (@n AS INT).
+-- The function should return @n products with the highest unit prices
+-- that are supplied by the specified supplier ID.
+---------------------------------------------------------------------
+USE TSQLV6;
+GO
+
+DROP FUNCTION IF EXISTS Production.TopProducts
+GO
+
+CREATE OR ALTER FUNCTION Production.TopProducts
+	(@supid AS INT, @n AS INT) 
+	RETURNS TABLE
+AS
+RETURN
+	SELECT TOP (@n) productid, productname, unitprice
+	FROM Production.Products
+	WHERE supplierid = @supid
+	ORDER BY unitprice DESC;
+GO
+
+SELECT * FROM Production.TopProducts(2, 3);
+
+/**
+	Alternatively you can use the OFFSET-FETCH filter. You replace the
+	inner query in the function with the following one.
+**/
+USE TSQLV6;
+GO
+
+DROP FUNCTION IF EXISTS Production.TopProducts
+GO
+
+CREATE OR ALTER FUNCTION Production.TopProducts
+	(@supid AS INT, @n AS INT) 
+	RETURNS TABLE
+AS
+RETURN
+	SELECT productid, productname, unitprice
+	FROM Production.Products
+	WHERE supplierid = @supid
+	ORDER BY unitprice DESC
+	OFFSET 0 ROWS FETCH NEXT @n ROWS ONLY;
+GO
+
+SELECT * FROM Production.TopProducts(2, 3);
