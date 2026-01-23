@@ -150,3 +150,46 @@ WITH Mgt_Chain AS
 )
 SELECT empid, mgrid, firstname, lastname
 FROM Mgt_Chain;
+
+-- Complete solution query.
+WITH EmpsCTE AS
+(
+	SELECT empid, mgrid, firstname, lastname
+	FROM HR.Employees
+	WHERE empid = 9
+
+	UNION ALl
+
+	SELECT P.empid, P.mgrid, P.firstname, P.lastname
+	FROM EmpsCTE AS C
+	  INNER JOIN HR.Employees AS P
+	  ON C.mgrid = P.empid
+)
+SELECT empid, mgrid, firstname, lastname
+FROM EmpsCTE;
+
+----------------------------------------------------------------
+-- Ex5-1: Create a view that returns the total quantity for each
+-- employee and year
+----------------------------------------------------------------
+USE TSQLV6;
+GO
+DROP VIEW IF EXISTS Sales.VEmpOrders;
+GO
+
+CREATE OR ALTER VIEW Sales.VEmpOrders
+AS
+
+SELECT 
+	empid,
+	YEAR(orderdate) AS orderyear,
+	SUM(qty) AS qty
+FROM Sales.Orders AS O
+	INNER JOIN Sales.OrderDetails AS OD
+	  ON O.orderid = OD.orderid
+GROUP BY
+	empid,
+	YEAR(orderdate);
+GO
+
+SELECT * FROM Sales.VEmpOrders ORDER BY empid, orderyear;
