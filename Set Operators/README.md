@@ -26,3 +26,10 @@ but only the UNION operator supports the ALL version. In terms of syntax,
 T-SQL doesn't allow you to specify the DISTINCT clause explicitly. Instead,
 it's implied when you don't specify ALL. We'll provide alternatives to the 
 missing INTERSECT ALL and EXCEPT ALL operators in the "The INTERSECT ALL".
+
+### Summary
+We covered the operators UNION,UNION ALL,EXCEPT,and INTERSECT. We understood
+that SQL standard also supports operators called INTERSECT ALL and EXCEPT ALL
+,and how to achieve the same in T-SQL. Lastly, we covered precedence among
+set opertors, and also techniques to circumvent unsupported logical-query
+processing phases by using table expressions.
