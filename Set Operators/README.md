@@ -11,12 +11,12 @@ T-SQL supports the following operators:
 	- EXCEPT
 
 The general form of a query with a set operator is as  follows :
-'''
+```
 	Input Query1
 	<set_operator>
 	Input Query2
 	[ORDER BY ...];
-'''
+```
 
 The SQL standard supports two "flavors" of each operator DISTINCT(the 
 default) and ALL. The DISTINCT flavor eliminates duplicates and returns
