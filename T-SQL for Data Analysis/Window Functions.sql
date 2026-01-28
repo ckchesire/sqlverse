@@ -139,7 +139,6 @@ GROUP BY val;
 -- is the default value to return if there is no row at the 
 -- requested offset(which is NULL if not specified otherwise).
 -----------------------------------------------------------------
-
 /**
 	As an example, the following query returns order information
 	from the OrderValues view. For each customer order, the 
@@ -294,3 +293,62 @@ WHERE custid IN (9, 20, 32, 73)
   AND orderdate >= '20220101'
 ORDER BY custid, orderdate, orderid;
 
+-----------------------------------------------------------------
+-- Aggregate Window Functions
+-----------------------------------------------------------------
+-- You use aggregate window functions to aggregate the row in the
+-- defined window. They support window-partition, window-order, 
+-- and window-frame clauses.
+-----------------------------------------------------------------
+/**
+	Here's a query against OrderValues that returns, along with each
+	order, the grand total of all order values, as well as the 
+	customer total.
+**/
+USE TSQLV6;
+SELECT orderid, custid, val,
+  SUM(val) OVER() AS totalvalue,
+  SUM(val) OVER(PARTITION BY custid) AS custtotalvalue
+FROM Sales.OrderValues;
+
+-- SELECT 814.50 + 878.00 + 330.00 + 845.80 + 471.20 + 933.50;
+-- SELECT SUM(val) FROM Sales.OrderValues;
+
+/**
+	As an example of mixing detail and aggregates, the following query
+	calculates for each row the percentage of the current value out of
+	the grand total, as well as out of the customer total.
+**/
+SELECT orderid, custid, val, 
+  100. * val / SUM(val) OVER() as pctall,
+  100. * val / SUM(val) OVER(PARTITION BY custid) AS pctcust
+FROM Sales.OrderValues;
+
+/**
+	Aggregate window functions also support a window frame. The frame
+	allows for more sophisticated  calculations, such as running and
+	moving aggregates, YTD and MTD calculations, and other. Let's
+	re-examine the query used in the introduction to the section about
+	window functions.
+
+	For the below, we apply the calculation to each employee independently
+	, we partition the window by empid. Then we define ordering based on
+	ordermonth, giving meaning to the window frame: ROWS BETWEEN UNBOUNDED
+	PRECEDING AND CURRENT ROW. This frame means "all activity from the
+	beginning of the partition until the current month."
+**/
+SELECT empid, ordermonth, val,
+  SUM(val) OVER(PARTITION BY empid
+				ORDER BY ordermonth
+				ROWS BETWEEN UNBOUNDED PRECEDING
+				         AND CURRENT ROW) AS runval
+FROM Sales.EmpOrders;
+
+/**
+	T-SQL supports other delimiters for the ROWS window-frame unit. You can
+	indicate an offset back from the current row as well as an offset forward.
+	For example, to capture all rows from two rows before the current row 
+	until one row ahead, you use ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING.
+
+	Also, if you do not want an upper bound, you can use UNBOUNDED FOLLOWING.
+**/
