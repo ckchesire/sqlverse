@@ -352,3 +352,26 @@ FROM Sales.EmpOrders;
 
 	Also, if you do not want an upper bound, you can use UNBOUNDED FOLLOWING.
 **/
+
+-------------------------------------------------------------------------
+-- The WINDOW clause
+-------------------------------------------------------------------------
+-- The WINDOW clause allows you to name an entire window specification or
+-- part of it in a query, and then use the window name in the OVER clause
+-- of window functions in that query. Its main purpose is to shorten the
+-- length of your query string when you have repetitive window 
+-- specifications.
+-------------------------------------------------------------------------
+/**
+	Check compatability level of your database
+**/
+SELECT name
+FROM sys.databases
+WHERE name = 'TSQLV6';
+
+USE TSQLV6;
+SELECT DATABASEPROPERTYEX(N'TSQLV6', N'CompatibilityLevel');
+
+SELECT DATABASEPROPERTYEX(N'TSQLV6', N'CompatibilityLevel');
+
+
