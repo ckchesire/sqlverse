@@ -374,4 +374,76 @@ SELECT DATABASEPROPERTYEX(N'TSQLV6', N'CompatibilityLevel');
 
 SELECT DATABASEPROPERTYEX(N'TSQLV6', N'CompatibilityLevel');
 
+/**
+	When considering all major query clauses(SELECT,FROM,WHERE,GROUP BY,HAVING,ORDER BY),
+	you place the WINDOW clause between the HAVING and ORDER BY clauses of the query.
 
+	Consider the following.
+**/
+
+SELECT empid, ordermonth, val,
+	SUM(val) OVER(PARTITION BY empid
+				  ORDER BY ordermonth
+				  ROWS BETWEEN UNBOUNDED PRECEDING
+						   AND CURRENT ROW) AS runsum,
+	MIN(val) OVER(PARTITION BY empid
+				  ORDER BY ordermonth
+				  ROWS BETWEEN UNBOUNDED PRECEDING
+						   AND CURRENT ROW) AS runmin,
+	MAX(val) OVER(PARTITION BY empid
+				  ORDER BY ordermonth
+				  ROWS BETWEEN UNBOUNDED PRECEDING
+						   AND CURRENT ROW) AS runmax,
+	AVG(val) OVER(PARTITION BY empid
+				  ORDER BY ordermonth
+				  ROWS BETWEEN UNBOUNDED PRECEDING
+						   AND CURRENT ROW) AS runavg
+FROM Sales.EmpOrders;
+
+/**
+	Here you have four window functions with identical window specifications.
+	Using the WINDOW clause, you can shorten the query string like so:
+**/
+SELECT empid, ordermonth, val,
+	SUM(val) OVER W AS runsum,
+	MIN(val) OVER W AS runmin,
+	MAX(val) OVER W AS runmax,
+	AVG(val) OVER W AS runavg
+FROM Sales.EmpOrders
+WINDOW W AS (PARTITION BY empid
+			 ORDER BY ordermonth
+			 ROWS BETWEEN UNBOUNDED PRECEDING
+					  AND CURRENT ROW);
+
+/**	
+	You can use the WINDOW clause to name part of a window specification.
+	In such a case, when using the window name in an OVER clause you can
+	specify it in parentheses at the beginning, before the remaining
+	windowing elements.
+**/
+SELECT custid, orderid, val,
+	FIRST_VALUE(val) OVER(PO
+						  ROWS BETWEEN UNBOUNDED PRECEDING
+								   AND CURRENT ROW) AS firstval,
+	LAST_VALUE(val) OVER(PO
+						 ROWS BETWEEN CURRENT ROW
+								  AND UNBOUNDED FOLLOWING) AS lastval
+FROM Sales.OrderValues
+WINDOW PO AS (PARTITION BY custid
+			  ORDER BY orderdate, orderid)
+ORDER BY custid, orderdate, orderid;
+
+/**
+	In a similar way you can define multiple window names, and recursively
+	reuse one window name within another.
+**/
+SELECT orderid, custid, orderdate, qty, val,
+	ROW_NUMBER() OVER PO AS ordernum,
+	MAX(orderdate) OVER P AS maxorderdate,
+	SUM(qty) OVER POF AS runsumqty,
+	SUM(val) OVER POF AS runsumval
+FROM Sales.OrderValues
+WINDOW P AS ( PARTITION BY custid ),
+	   PO AS ( P ORDER BY orderdate, orderid ),
+	   POF AS ( PO ROWS UNBOUNDED PRECEDING )
+ORDER BY custid, orderdate, orderid;
