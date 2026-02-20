@@ -447,3 +447,158 @@ WINDOW P AS ( PARTITION BY custid ),
 	   PO AS ( P ORDER BY orderdate, orderid ),
 	   POF AS ( PO ROWS UNBOUNDED PRECEDING )
 ORDER BY custid, orderdate, orderid;
+
+----------------------------------------------------------
+-- Pivoting Data
+-- Involves rotating data from  a state of rows to a state
+-- of columns, possibly aggregating values along the way.
+--
+-- In many cases, the pivoting of data is handled by the
+-- presentation layer for purposes such as reporting.
+----------------------------------------------------------
+USE TSQLV6;
+
+DROP TABLE IF EXISTS dbo.Orders;
+
+CREATE TABLE dbo.Orders
+(
+	orderid		INT		NOT NULL
+	   CONSTRAINT PK_Orders PRIMARY KEY,
+	orderdate	DATE	NOT NULL,
+	empid		INT		NOT NULL,
+	custid		VARCHAR(5) NOT NULL,
+	qty			INT		NOT NULL
+);
+
+INSERT INTO dbo.Orders(orderid, orderdate, empid, custid, qty)
+VALUES
+	(30001, '20200802', 3, 'A', 10),
+	(10001, '20201224', 2, 'A', 12),
+	(10005, '20201224', 1, 'B', 20),
+	(40001, '20210109', 2, 'A', 40),
+	(10006, '20210118', 1, 'C', 14),
+	(20001, '20210212', 2, 'B', 12),
+	(40005, '20220212', 3, 'A', 10),
+	(20002, '20220216', 1, 'C', 20),
+	(30003, '20220418', 2, 'B', 15),
+	(30004, '20200418', 3, 'C', 22),
+	(30007, '20220907', 3, 'D', 30);
+
+SELECT * FROM dbo.Orders;
+
+/**
+	Suppose you need to query the above table and return the total
+	order quantity for each employee and customer. The following
+	grouped query achieves this task.
+**/
+SELECT empid, custid, SUM(qty) AS sumqty
+FROM dbo.Orders
+GROUP BY empid, custid;
+
+/**
+	Suppose you have a requirement to produce the output, a pivoted
+	view of total quantity per employee (on rows) and customer (on columns)
+
+	Every pivoting request involves three logical processing phases, each
+	with associated elements:
+	1. A grouping phase with an associated grouping or on rows element
+	2. A spreading phase with an associated spreading or on cols element
+	3. An aggregation phase with an associated aggregation element and 
+	   aggregate function.
+
+	In summary, pivoting involves grouping, spreading and aggregating.
+**/
+
+---------------------------------------------------------------------
+-- Pivoting with a grouped query
+---------------------------------------------------------------------
+-- The solution using a grouped query handles all three phases in 
+-- an explicit and straightforward manner. 
+--	1. The grouping phase is achieved with a GROUP BY clause-in this
+--    case, GROUP BY empid.
+--  2. The spreading phase is achieved in the SELECT clause with a
+--    a CASE Expression for each target column.
+--  3. Finally, the aggregation phase is achieved by applying the 
+--	  relevant aggregate function (SUM, in this case) to the result
+--    column for customer A.
+---------------------------------------------------------------------
+/**
+	Complete solution query that pivots order data, returning the total
+	quantity for each employee (on rows) and customer (on columns).
+**/
+
+SELECT * FROM dbo.Orders;
+
+SELECT * FROM dbo.Orders
+WHERE custid = 'A' AND empid = 2;
+
+SELECT empid,
+  SUM(CASE WHEN custid = 'A' THEN qty END) AS A,
+  SUM(CASE WHEN custid = 'B' THEN qty END) AS B, 
+  SUM(CASE WHEN custid = 'C' THEN qty END) AS C,
+  SUM(CASE WHEN custid = 'D' THEN qty END) AS D
+FROM dbo.Orders
+GROUP BY empid;
+
+---------------------------------------------------------------------
+-- Pivoting with the PIVOT operator
+---------------------------------------------------------------------
+-- The solution for pivoting based on an explicit grouped query is
+-- standard. T-SQL also supports a proprietary operator called PIVOT
+-- that you can use to achieve pivoting in a more concise manner.
+--
+-- As a table operator, PIVOT operates in the context of the FROM
+-- clause like any other table operator (for example, JOIN).
+-- 
+-- The PIVOT operator involves the same logical processing phases as
+-- described earlier (grouping, spreading, and aggregating), only it
+-- requires less code than the previous solution.
+--
+-- The general form of a query with the PIVOT operator is:
+--	SELECT ...
+--	FROM <input_table>
+--		PIVOT(<agg_function>(<aggregation_element>)
+--				FOR <spreading_element> IN (<list_of_target_columns>)) AS <result_table_alias>
+--	WHERE ...;
+---------------------------------------------------------------------
+/**
+	Solution query to the original pivoting request, using the PIVOT
+	operator.
+**/
+SELECT empid, A, B, C, D
+FROM (SELECT empid, custid, qty
+	  FROM dbo.Orders) AS D
+  PIVOT(SUM(qty) FOR custid IN(A, B, C, D)) AS P;
+
+/**
+	To understand why you're required to use table expressions, consider
+	the following query, which applies the PIVOT operator directly to the
+	dbo.Orders table.
+**/
+SELECT empid, A, B, C, D
+FROM dbo.Orders
+  PIVOT(SUM(qty) FOR custid IN(A, B, C, D)) AS P;
+
+/**
+	The logical equivalent of this query that uses the standard solution for
+	pivoting has orderid, orderdate, and empid listed in the GROUP BY list as
+	follows.
+**/
+SELECT empid,
+  SUM(CASE WHEN custid = 'A' THEN qty END) AS A,
+  SUM(CASE WHEN custid = 'B' THEN qty END) AS B,
+  SUM(CASE WHEN custid = 'C' THEN qty END) AS C,
+  SUM(CASE WHEN custid = 'D' THEN qty END) AS D
+FROM dbo.Orders
+GROUP BY orderid, orderdate, empid;
+
+/**
+	After you learn the "template" for a pivoting solution (with the
+	grouped query or with the PIVOT operator), it's just a matter 
+	of fitting those elements in the right places. The following 
+	solution query uses the PIVOT operator to achieve the result.
+**/
+SELECT custid, [1], [2], [3]
+FROM (SELECT empid, custid, qty
+	  FROM dbo.Orders) AS D
+	PIVOT(SUM(qty) FOR  empid IN([1], [2], [3])) AS P;
