@@ -598,7 +598,41 @@ GROUP BY orderid, orderdate, empid;
 	of fitting those elements in the right places. The following 
 	solution query uses the PIVOT operator to achieve the result.
 **/
+
+SELECT * FROM dbo.Orders;
+
 SELECT custid, [1], [2], [3]
 FROM (SELECT empid, custid, qty
 	  FROM dbo.Orders) AS D
 	PIVOT(SUM(qty) FOR  empid IN([1], [2], [3])) AS P;
+
+--------------------------------------------------------------
+-- Unpivoting Data
+--------------------------------------------------------------
+-- Unpivoting is a technique that rotates data from a state of
+-- columns to a state of rows.
+-- A common use case is to unpivot data you imported from a
+-- spreadsheet into the database for easier manipulation.
+--------------------------------------------------------------
+
+USE TSQLV6;
+
+DROP TABLE IF EXISTS dbo.EmpCustOrders;
+
+CREATE TABLE dbo.EmpCustOrders
+(
+	empid INT NOT NULL
+		CONSTRAINT PK_EmpCustOrders PRIMARY KEY,
+	A VARCHAR(5) NULL,
+	B VARCHAR(5) NULL,
+	C VARCHAR(5) NULL,
+	D VARCHAR(5) NULL
+);
+
+INSERT INTO dbo.EmpCustOrders(empid, A, B, C, D)
+	SELECT empid, A, B, C, D
+	FROM (SELECT empid, custid, qty
+		  FROM dbo.Orders) AS D
+	  PIVOT(SUM(qty) FOR custid IN(A, B, C, D)) AS P;
+
+SELECT * FROM dbo.EmpCustOrders;
