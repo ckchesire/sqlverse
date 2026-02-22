@@ -636,3 +636,71 @@ INSERT INTO dbo.EmpCustOrders(empid, A, B, C, D)
 	  PIVOT(SUM(qty) FOR custid IN(A, B, C, D)) AS P;
 
 SELECT * FROM dbo.EmpCustOrders;
+
+SELECT * FROM dbo.Orders;
+
+--------------------------------------------------------------
+-- Unpivoting with the APPlY operator
+--------------------------------------------------------------
+-- Unpivoting involves three logical processing phases: 
+-- 1.) Producing copies
+-- 2.) Extracting values
+-- 3.) Eliminating irrelevant rows.
+--------------------------------------------------------------
+/**
+	The first step in the solution involves producing multiple
+	copies of each source row-one for each column you need to
+	unpivot.
+**/
+
+SELECT *
+FROM dbo.EmpCustOrders
+   CROSS JOIN (VALUES('A'), ('B'), ('C'), ('D')) AS C(custid);
+
+SELECT * FROM dbo.EmpCustOrders;
+/**
+	You can build a virtual table for customers on the fly using
+	a table-value constructor based on the VALUES clause.
+
+	The VALUES clause defines a set of four rows, each with a 
+	single customer ID value. The code defines a derived table
+	called C based on this clause and names the only column in
+	it custid.
+**/
+
+/**
+	The second step in the solution is to extract a value from one
+	of the original customer quantity columns(A,B,C,or D) to return
+	a single value column (call it qty in our case).
+
+	You need to extract the value from the column that corresponds
+	to the current custid value.
+**/
+SELECT empid, custid, qty
+FROM dbo.EmpCustOrders
+  CROSS JOIN (VALUES('A', A), ('B', B), ('C', C), ('D', D)) AS C(custid, qty);
+
+/**
+	The solution is to use the CROSS APPLY operator instead of the
+	CROSS JOIN operator. They are similar, but the former evaluates
+	the left side first and then applies the right side to each left
+	row, making the left side's element accessible to the right side.
+	Here's the code implementing this step with the CROSS APPLY
+	operator.
+**/
+SELECT empid, custid, qty
+FROM dbo.EmpCustOrders
+  CROSS APPLY (VALUES('A', A), ('B', B), ('C', C), ('D', D)) AS C(custid, qty);
+
+/**
+	As for the third step, recall that in the original table NULLs represent
+	irrelevant intersections. In this case there's typically no reason to
+	keep irrelevant rows where qty is NULL.
+
+	To remove irrelevant rows, add a filter in the WHERE clause that discards
+	rows with a NULL in the qty column, like this:
+**/
+SELECT empid, custid, qty
+FROM dbo.EmpCustOrders
+  CROSS APPLY (VALUES('A', A), ('B', B), ('C', C), ('D', D)) AS C(custid, qty)
+WHERE qty IS NOT NULL;
