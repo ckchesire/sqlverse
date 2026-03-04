@@ -704,3 +704,36 @@ SELECT empid, custid, qty
 FROM dbo.EmpCustOrders
   CROSS APPLY (VALUES('A', A), ('B', B), ('C', C), ('D', D)) AS C(custid, qty)
 WHERE qty IS NOT NULL;
+
+---------------------------------------------------------------
+-- Unpivoting with the UNPIVOT operator
+---------------------------------------------------------------
+-- Unpivoting data involves producing two result columns from
+-- any number  of source columns, one to hold the source column
+-- names as strings and another to hold the source column names.
+--
+-- T-SQL also supports the UNPIVOT operator to enable you to
+-- unpivot data. The general form of a query with the UNPIVOT 
+-- operator is as follows:
+--
+--	SELECT ...
+--	FROM <input_table>
+--	  UNPIVOT(<values_column> FOR <names_column> IN(<source_columns>)
+--	  AS <result_table_alias>
+--	WHERE ...;
+---------------------------------------------------------------
+SELECT *
+FROM dbo.EmpCustOrders;
+
+SELECT empid, custid, qty
+FROM dbo.EmpCustOrders
+  UNPIVOT(qty FOR custid IN(A, B, C, D)) AS U;
+
+/**
+	Note: The UNPIVOT operator implements the same logical-processing
+	phases described earlier - generating copies, extracting elements,
+	and eliminating NULL intersections.
+**/
+
+-- Code cleanup
+DROP TABLE IF EXISTS dbo.EmpCustOrders;
