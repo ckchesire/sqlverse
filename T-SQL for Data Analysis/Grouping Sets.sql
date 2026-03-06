@@ -121,3 +121,39 @@ SELECT empid, custid, SUM(qty) AS sumqty
 FROM dbo.Orders
 GROUP BY CUBE(empid, custid);
 
+
+------------------------------------------------------------
+-- The ROLLUP subclause
+------------------------------------------------------------
+-- The ROLLUP subclause of the GROUP BY clause also provides
+-- a way to define multiple grouping sets. ROLLUP assumes a
+-- hierarchy among the input members and produces only 
+-- grouping sets that form leading combinations of the input
+-- members.
+------------------------------------------------------------
+
+/**
+	For example, suppose you want to return total quantities
+	for all grouping sets that can be defined based on the time
+	hierarchy of order year, order month, order day. You can use
+	the GROUPING SETS subclause and explicitly list all four
+	possible grouping sets.
+**/
+
+GROUPING SETS(
+	(YEAR(orderdate), MONTH(orderdate), DAY(orderdate)),
+	(YEAR(orderdate), MONTH(orderdate)),
+	(YEAR(orderdate)),
+	()	)
+
+-- The logical equivalent that use ROLLUP subclause is much more concise
+ ROLLUP(YEAR(orderdate), MONTH(orderdate), DAY(orderdate))
+
+ -- The complete query
+ SELECT
+	YEAR(orderdate) AS orderyear,
+	MONTH(orderdate) AS ordermonth,
+	DAY(orderdate) AS orderdate,
+	SUM(qty) AS sumqty
+FROM dbo.Orders
+GROUP BY ROLLUP(YEAR(orderdate), MONTH(orderdate), DAY(orderdate));
