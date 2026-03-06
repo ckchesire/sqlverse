@@ -99,3 +99,25 @@ GROUP BY
 	number of grouping sets because it can roll up aggregates
 	internally.
 **/
+
+------------------------------------------------------------
+-- The CUBE subclause
+------------------------------------------------------------
+-- The CUBE subclause of the GROUP BY clause provides an
+-- abbreviated way to define multiple grouping sets.
+------------------------------------------------------------
+/**
+	For example, CUBE(a, b, c) is equivalent to GROUPING SETS
+	((a,b,c), (a,b), (a,c), (b,c), (a), (b), (c),()).
+	In set theory, the set of all subsets of elements that can
+	be produced from a particular set is called the power set.
+
+	Instead of using the GROUPING SETS subclause in the previous
+	query to define the four grouping sets(empid, custid), (empid),
+	(custid), and (), you can simply use CUBE(empid, custid).
+**/
+USE TSQLV6;
+SELECT empid, custid, SUM(qty) AS sumqty
+FROM dbo.Orders
+GROUP BY CUBE(empid, custid);
+
